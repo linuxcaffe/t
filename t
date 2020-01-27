@@ -55,8 +55,8 @@ actions:
      sw,switch - switch projects
      bal - show balance
      hours - show balance for today
-     thisweek - show balance for this week
-     lastweek - show balance for last week
+     tw,thisweek - show balance for this week
+     lw,lastweek - show balance for last week
      edit - edit timelog file
      cur - show currently open project
      last - show last closed project
@@ -92,7 +92,9 @@ case "${action}" in
   bal) _t_ledger bal "$@";;
   hours) _t_ledger bal -p "since today" "$@";;
   thisweek) _t_ledger bal -p "this week" "$@";;
+  tw) _t_ledger bal -p "this week" "$@";;
   lastweek) _t_ledger bal -p "last week" "$@";;
+  lw) _t_ledger bal -p "last week" "$@";;
   switch)   _t_sw "$@";;
   edit) _t_do $EDITOR "$@";;
   cur)  _t_cur "$@";;
