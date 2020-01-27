@@ -28,11 +28,16 @@ Usage: `t <action>`
 - `t sw,switch` - switch projects
 - `t bal` - show balance
 - `t hours` - show balance for today
+- `t yd,yesterday` - show balance for yesterday
+- `t tw,thisweek` - show balance for this week
+- `t lw,lastweek` - show balance for last week
 - `t edit` - edit timelog file
 - `t cur` - show currently open project
 - `t last` - show last closed project
 - `t grep` - grep timelog for argument
 - `t cat` - show timelog
+- `t head` - show start of timelog
+- `t tail` - show end of timelog
 - `t less` - show timelog in pager
 - `t timelog` - show timelog file
 
