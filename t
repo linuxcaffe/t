@@ -60,6 +60,8 @@ actions:
      last - show last closed project
      grep - grep timelog for argument
      cat - show timelog
+     head - show start of timelog
+     tail - show end of timelog
      less - show timelog in pager
      timelog - show timelog file
 EOF
@@ -93,6 +95,8 @@ case "${action}" in
   last) _t_last "$@";;
   grep) _t_do grep "$@";;
   cat)  _t_do cat "$@";;
+  head)  _t_do head "$@";;
+  tail)  _t_do tail "$@";;
   less)  _t_do less;;
   timelog) _t_timelog "$@";;
 
