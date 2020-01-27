@@ -41,7 +41,7 @@ _t_cur() {
 
 # Show the last checked out project
 _t_last() {
-  sed -ne '/^o/{g;p;};h;' "${timelog}" | tail -n 1 | __t_extract_project
+  sed -ne '/^o/{g;p;};h;' "${timelog}" | tail -n $1 | head -n 1 | __t_extract_project
 }
 
 # Show usage
@@ -61,6 +61,7 @@ actions:
      edit - edit timelog file
      cur - show currently open project
      last - show last closed project
+     last^ to last^^^^^ - show nth last closed project
      grep - grep timelog for argument
      cat - show timelog
      head - show start of timelog
@@ -101,7 +102,12 @@ case "${action}" in
   switch)   _t_sw "$@";;
   edit) _t_do $EDITOR "$@";;
   cur)  _t_cur "$@";;
-  last) _t_last "$@";;
+  last^^^^^) _t_last 6 "$@";;
+  last^^^^) _t_last 5 "$@";;
+  last^^^) _t_last 4 "$@";;
+  last^^) _t_last 3 "$@";;
+  last^) _t_last 2 "$@";;
+  last) _t_last 1 "$@";;
   grep) _t_do grep "$@";;
   cat)  _t_do cat "$@";;
   head)  _t_do head "$@";;

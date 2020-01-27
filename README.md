@@ -34,6 +34,7 @@ Usage: `t <action>`
 - `t edit` - edit timelog file
 - `t cur` - show currently open project
 - `t last` - show last closed project
+- `t last^ to last^^^^^` - show nth last closed project
 - `t grep` - grep timelog for argument
 - `t cat` - show timelog
 - `t head` - show start of timelog
