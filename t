@@ -54,7 +54,7 @@ actions:
      out - clock out of project
      sw,switch - switch projects
      bal - show balance
-     hours - show balance for today
+     hours,td - show balance for today
      yd,yesterday - show balance for yesterday
      tw,thisweek - show balance for this week
      lw,lastweek - show balance for last week
@@ -93,6 +93,7 @@ case "${action}" in
   sw)   _t_sw "$@";;
   bal) _t_ledger bal "$@";;
   hours) _t_ledger bal -p "since today" "$@";;
+  td) _t_ledger bal -p "since today" "$@";;
   yesterday) _t_ledger bal -p "yesterday" "$@";;
   yd) _t_ledger bal -p "yesterday" "$@";;
   thisweek) _t_ledger bal -p "this week" "$@";;
