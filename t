@@ -76,12 +76,7 @@ EOF
 #
 
 __t_extract_project() {
-  awk '$1 != "o" {
-          line = $4
-          for (i=5; i<=NF; i++)
-            line = line " " $i;
-          print line
-      }'
+  sed -e 's/\([^ \t]* \)\{3\}//'
 }
 
 action=$1; shift
