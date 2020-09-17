@@ -79,6 +79,12 @@ __t_extract_project() {
   sed -e 's/\([^ \t]* \)\{3\}//'
 }
 
+if [ -z "$TIMELOG_STARTOFWEEK" ]; then
+  _args="bal -p"
+else
+  _args="bal --start-of-week $TIMELOG_STARTOFWEEK -p"
+fi
+
 action=$1; shift
 [ "$TIMELOG" ] && timelog="$TIMELOG" || timelog="${HOME}/.timelog.ldg"
 
@@ -91,10 +97,10 @@ case "${action}" in
   td) _t_ledger bal -p "since today" "$@";;
   yesterday) _t_ledger bal -p "yesterday" "$@";;
   yd) _t_ledger bal -p "yesterday" "$@";;
-  thisweek) _t_ledger bal -p "this week" "$@";;
-  tw) _t_ledger bal -p "this week" "$@";;
-  lastweek) _t_ledger bal -p "last week" "$@";;
-  lw) _t_ledger bal -p "last week" "$@";;
+  thisweek) _t_ledger $_args "this week" "$@";;
+  tw) _t_ledger $_args "this week" "$@";;
+  lastweek) _t_ledger $_args "last week" "$@";;
+  lw) _t_ledger $_args "last week" "$@";;
   switch)   _t_sw "$@";;
   edit) _t_do $EDITOR "$@";;
   cur)  _t_cur "$@";;
