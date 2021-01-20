@@ -56,6 +56,7 @@ actions:
      bal - show balance
      hours,td - show balance for today
      yd,yesterday - show balance for yesterday
+     yd^ - show balance for 2 days ago
      tw,thisweek - show balance for this week
      lw,lastweek - show balance for last week
      edit - edit timelog file
@@ -97,6 +98,7 @@ case "${action}" in
   td) _t_ledger bal -p "since today" "$@";;
   yesterday) _t_ledger bal -p "yesterday" "$@";;
   yd) _t_ledger bal -p "yesterday" "$@";;
+  yd^) _t_ledger bal -p "2 days ago" "$@";;
   thisweek) _t_ledger $_args "this week" "$@";;
   tw) _t_ledger $_args "this week" "$@";;
   lastweek) _t_ledger $_args "last week" "$@";;
