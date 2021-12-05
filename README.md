@@ -2,10 +2,21 @@
 
 ## Description ##
 
-t is a shell script for working with [ledger][]'s [timelog][] format.
-
-This script is based on Justing Harding's fork (https://github.com/justinharding/t) of Chase James's t (https://github.com/nuex/t) incorporating ideas from the tito script and then heavily modified by me.  
-
+t is a shell script for working with [ledger][]'s [timelog][] format, based on Justing Harding's fork (https://github.com/justinharding/t) of Chase James's t (https://github.com/nuex/t) incorporating ideas from the tito script and then heavily modified by me.  
+```
+#!/bin/bash
+######################################################## v.0.6.5
+#   _             _   _                _               #
+#  | |_          | |_(_)_ __ ___   ___| | ___   __ _   #
+#  | __|   IS    | __| | '_ ` _ \ / _ \ |/ _ \ / _` |  #
+#  | |_    FOR   | |_| | | | | | |  __/ | (_) | (_| |  #
+#   \__|          \__|_|_| |_| |_|\___|_|\___/ \__, |  #
+#                                              |___/   #
+#                                                      #
+########################################################
+# t is a utility to work with (h)ledger *.timeclock files
+# see github.com/linuxcaffe/task-timelog-hook/
+```
 ## Install ##
 
 Download and install the script to a `bin` directory that exists in your `$PATH`. For example, `$HOME/bin`:
@@ -15,9 +26,12 @@ Download and install the script to a `bin` directory that exists in your `$PATH`
 
 Set the location of your timelog file:
 
-    export $TIMELOG=$HOME/t.timeclock
+    export $TIMELOG=$HOME/path/to/my.timeclock
 
-The default location is `$HOME/t.timeclock`.
+Because this script is designed to work with [task-timelog-hook](https://github.com/linuxcaffe/task-timelog-hook/)
+the default location is `$HOME/.task/hooks/task-timelog-hook/task.timeclock`.
+but you can can change it, and other settings, but editing the script.
+
 NOTE: althought the term "timelog" is consistent for this process, 
 for some reason the recognized file extension _must be_ `*.timeclock`.
 So think of the process as timelogging into a timeclock file, ok?
