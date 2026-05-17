@@ -1,0 +1,135 @@
+/* t-block.css — styles for the t timeclock codeblock widget
+   Works standalone or inside nb-web (where CSS vars are already defined).
+   Falls back to sensible defaults when vars aren't set. */
+
+.nb-t-block {
+  margin: 1em 0;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 6px;
+  overflow: hidden;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.nb-t-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg2, #f9fafb);
+  gap: 10px;
+}
+
+.nb-t-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 0;
+}
+
+.nb-t-dot       { font-size: 15px; flex-shrink: 0; }
+.nb-t-dot-in    { color: var(--green,  #22c55e); }
+.nb-t-dot-out   { color: var(--text-muted, #9ca3af); }
+
+.nb-t-account   { font-weight: 600; color: var(--accent, #6366f1); white-space: nowrap; }
+.nb-t-out-label { font-weight: 600; color: var(--text-muted, #9ca3af); }
+
+.nb-t-elapsed {
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  background: var(--bg3, #f3f4f6);
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: var(--green, #22c55e);
+  white-space: nowrap;
+}
+
+.nb-t-desc {
+  font-size: 12px;
+  color: var(--text-muted, #9ca3af);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-t-actions { display: flex; gap: 5px; flex-shrink: 0; }
+
+.nb-t-btn {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border, #d1d5db);
+  background: var(--bg, #fff);
+  color: var(--text, #111827);
+  cursor: pointer;
+}
+.nb-t-btn:hover { background: var(--bg2, #f9fafb); }
+.nb-t-btn:disabled { opacity: 0.5; cursor: default; }
+.nb-t-btn.active { background: var(--bg3, #e5e7eb); }
+
+.nb-t-out-btn { color: var(--red,   #ef4444); border-color: var(--red,   #ef4444); }
+.nb-t-in-btn  { color: var(--green, #22c55e); border-color: var(--green, #22c55e); }
+.nb-t-error   { color: var(--red,   #ef4444); font-size: 12px; padding: 6px; display: block; }
+.nb-t-spin    { display: inline-block; animation: nb-t-spin 1s linear infinite; padding: 8px; }
+@keyframes nb-t-spin { to { transform: rotate(360deg); } }
+
+/* ── Time report ── */
+.nb-t-report {
+  border-top: 1px solid var(--border, #d1d5db);
+  padding: 6px 12px 8px;
+  background: var(--bg, #fff);
+}
+
+.nb-t-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border, #f3f4f6);
+}
+.nb-t-row:last-child { border-bottom: none; }
+
+.nb-t-total {
+  font-weight: 600;
+  border-top: 1px solid var(--border, #d1d5db);
+  margin-top: 2px;
+  padding-top: 5px;
+}
+
+.nb-t-r-acct { color: var(--text, #111827); font-family: var(--font-mono, monospace); font-size: 11px; }
+.nb-t-r-time { font-family: var(--font-mono, monospace); font-size: 12px; color: var(--accent, #6366f1); }
+
+/* ── Clock-in form ── */
+.nb-t-clock-in-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border, #d1d5db);
+  background: var(--bg2, #f9fafb);
+}
+
+.nb-t-acct-sel,
+.nb-t-custom-acct,
+.nb-t-desc-input {
+  font-size: 12px;
+  padding: 3px 6px;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 4px;
+  color: var(--text, #111827);
+}
+
+.nb-t-acct-sel    { max-width: 180px; }
+.nb-t-custom-acct { max-width: 150px; }
+.nb-t-desc-input  { flex: 1; min-width: 120px; }
+
+/* Dark mode (if host app sets data-theme="dark") */
+[data-theme="dark"] .nb-t-block  { border-color: var(--border, #374151); }
+[data-theme="dark"] .nb-t-header { background: var(--bg2, #1f2937); }
+[data-theme="dark"] .nb-t-report { background: var(--bg,  #111827); }
+[data-theme="dark"] .nb-t-clock-in-form { background: var(--bg2, #1f2937); }
+[data-theme="dark"] .nb-t-btn    { background: var(--bg, #111827); border-color: var(--border, #374151); color: var(--text, #f9fafb); }
