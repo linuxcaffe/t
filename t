@@ -9,8 +9,11 @@
 #    timelog.ledger_bin = hledger
 #    timelog.editor     = vi
 ###############################################################################
+#  Prefix "." to use timedot format:  t . i account 1.5h
+#    timelog.timedot_file = ~/.task/time/tw.timedot
+###############################################################################
 
-VERSION="1.1.0"
+VERSION="1.2.0"
 
 # --- Colours -----------------------------------------------------------------
 red='\e[0;91m'; green='\e[0;92m'; blue='\e[0;94m'; reset='\e[0m'
@@ -36,6 +39,8 @@ EDITOR_BIN=$(get_config editor "${EDITOR:-vi}")
 
 # $TIMELOG env var overrides config (backwards compat)
 [[ -n "${TIMELOG:-}" ]] && tc_file="$TIMELOG"
+
+td_file=$(_expand "$(get_config timedot_file "$(dirname "$tc_file")/tw.timedot")")
 
 # --- Helpers -----------------------------------------------------------------
 
@@ -213,8 +218,8 @@ t_zip() {
 
 t_version() {
     local lv; lv=$("$LEDGER" --version 2>/dev/null | head -1 || printf '%s (not found)' "$LEDGER")
-    printf "t %s\nconfig: %s\nfile:   %s\nledger: %s\n" \
-        "$VERSION" "$rc" "$tc_file" "$lv"
+    printf "t %s\nconfig:  %s\ntimelog: %s\ntimedot: %s\nledger:  %s\n" \
+        "$VERSION" "$rc" "$tc_file" "$td_file" "$lv"
 }
 
 t_help() {
@@ -261,11 +266,162 @@ Usage: t [action] [args]                              "t" is for timelog
     v|version         show version and config paths
     h|help            this help
 
+  Timedot mode:  prefix any command with "."
+    t . i account time [comment]   log time in timedot format
+    t . b                          balance report on timedot file
+    t . help                       timedot mode help
+
   Config: ~/.task/config/timelog.rc
-    timelog.file       = ~/.task/time/tw.timeclock
-    timelog.tz         = America/Toronto
-    timelog.ledger_bin = hledger
-    timelog.editor     = vi    (defaults to \$EDITOR)
+    timelog.file         = ~/.task/time/tw.timeclock
+    timelog.timedot_file = ~/.task/time/tw.timedot
+    timelog.tz           = America/Toronto
+    timelog.ledger_bin   = hledger
+    timelog.editor       = vi    (defaults to \$EDITOR)
+EOF
+}
+
+# --- Timedot helpers ---------------------------------------------------------
+
+td_now()        { TZ="$tz" date "+%Y/%m/%d"; }
+td_ledger()     { "$LEDGER" -f "$td_file" "$@"; }
+
+_ensure_td_file() {
+    mkdir -p "$(dirname "$td_file")"
+    [[ -f "$td_file" ]] || touch "$td_file"
+}
+
+td_last_date() {
+    [[ -f "$td_file" ]] || { printf ''; return; }
+    grep -E '^[0-9]{4}/[0-9]{2}/[0-9]{2}' "$td_file" | tail -1
+}
+
+td_last_account() {
+    [[ -f "$td_file" ]] || { printf ''; return; }
+    grep -E '^[^;#*/[:space:]].*  +[0-9. ]' "$td_file" | tail -1 | sed 's/  .*//'
+}
+
+td_accounts() {
+    [[ -f "$td_file" ]] || return
+    grep -E '^[^;#*/[:space:]].*  +[0-9. ]' "$td_file" | sed 's/  .*//' | sort -u
+}
+
+# --- Timedot commands --------------------------------------------------------
+
+t_dot_status() {
+    if [[ ! -f "$td_file" ]]; then
+        printf "${blue}No timedot entries${reset}\nFile: %s\n" "$td_file"; return
+    fi
+    local last_date; last_date=$(td_last_date)
+    local last_entry; last_entry=$(grep -E '^[^;#*/[:space:]].*  +[0-9. ]' "$td_file" | tail -1)
+    if [[ -n "$last_entry" ]]; then
+        printf "${blue}Last:${reset}  ${blue}%s${reset}\n    on %s\n" "$last_entry" "$last_date"
+    else
+        printf "${blue}No timedot entries yet${reset}\n"
+    fi
+    printf "File: %s\n" "$td_file"
+}
+
+t_dot_in() {
+    local account="${1:-}" time="${2:-}"; shift 2 2>/dev/null || true
+    local comment="${*:-}"
+
+    [[ -z "$account" ]] && { printf 'Specify an account\n' >&2; return 1; }
+    [[ -z "$time" ]]    && { printf 'Specify a time (e.g. 1.5h  ....  90m)\n' >&2; return 1; }
+
+    _ensure_td_file
+    local today; today=$(td_now)
+    local last_date; last_date=$(td_last_date)
+
+    local entry="${account}  ${time}"
+    [[ -n "$comment" ]] && entry+="    ; ${comment#; }"
+
+    if [[ "$last_date" == "$today" ]]; then
+        printf '%s\n' "$entry" >> "$td_file"
+    else
+        { printf '\n%s\n%s\n' "$today" "$entry"; } >> "$td_file"
+    fi
+    printf "${green}LOGGED${reset}  ${blue}%s${reset}  %s%s\n" \
+        "$account" "$time" "${comment:+  ; $comment}"
+}
+
+t_dot_log() {
+    local minutes="${1:-}"; shift
+    local account="${1:-}"; shift
+    local desc="${*:-}"
+
+    [[ "$minutes" =~ ^[0-9]+$ ]] || {
+        printf 'Usage: t . log <minutes> [account] [desc]\n' >&2; return 1
+    }
+    [[ -z "$account" ]] && account=$(td_last_account)
+    [[ -z "$account" ]] && { printf 'Specify an account\n' >&2; return 1; }
+
+    # Convert minutes to decimal hours, trimming unnecessary zeros
+    local hrs; hrs=$(awk "BEGIN { printf \"%.2f\", $minutes/60 }" \
+        | sed 's/\.00$//' | sed 's/\(\.[0-9]\)0$/\1/')
+    t_dot_in "$account" "${hrs}h" "$desc"
+}
+
+t_dot_comment() {
+    local comment="${*:-}"
+    [[ -z "$comment" ]] && read -e -p "Comment: " comment
+    [[ -z "$comment" ]] && return 0
+    _ensure_td_file
+    local ts; ts=$(date "+%H:%M:%S")
+    printf '; %s -- %s\n' "$ts" "$comment" >> "$td_file"
+    printf "${blue}Comment added${reset} at %s\n" "$ts"
+}
+
+t_dot_zip() {
+    local dir; dir=$(dirname "$td_file")
+    local ts;  ts=$(date "+%Y%m%d_%H%M%S")
+    local bak="${dir}/tw.${ts}.timedot.bak"
+    cp "$td_file" "$bak" && printf "Backup: %s\n" "$bak"
+}
+
+t_dot_help() {
+    cat << EOF
+Usage: t . [action] [args]                      "t ." is for timedot
+
+  Entry:
+    i|in  account time [comment]    log time  (e.g. t . i work:client 2.5h)
+    l|log <min> [acct] [desc]       log <minutes> of work (converts to decimal h)
+    c|comment [text]                add timestamped comment
+
+  Status & info:
+    (no args)|s|status              show last entry + file path
+    a|accounts                      list accounts used
+    cur                             last-used account (for scripts/prompts)
+
+  Reports (extra args passed to hledger):
+    b|bal   [args]    balance report
+    r|reg   [args]    register report
+    p|print [args]    print entries
+    stats             file stats
+    td|today          balance today
+    yd|yesterday      balance yesterday
+    yd^               balance 2 days ago
+    tw|thisweek       balance this week
+    lw|lastweek       balance last week
+    tm|thismonth      balance this month
+    lm|lastmonth      balance last month
+
+  File:
+    e|edit            open timedot file in \$EDITOR
+    f|file            show timedot file path
+    g|grep  [args]    grep timedot file
+    t|tail  [n]       tail timedot file (default: 20 lines)
+    head    [n]       head timedot file (default: 20 lines)
+    less              page through timedot file
+    u|ui    [args]    open in hledger-ui
+    w|web   [args]    open in hledger-web
+    z|zip             backup timedot file with timestamp
+    h|help            this help
+
+  Time formats:  ....  (dots, each = 15min)   1.5h   90m   1.5 (decimal h)
+  Account/time separator: 2+ spaces  →  account  1.5h
+
+  Config: ~/.task/config/timelog.rc
+    timelog.timedot_file = ~/.task/time/tw.timedot
 EOF
 }
 
@@ -309,5 +465,39 @@ case "$action" in
     zip|z)          t_zip;;
     version|v)      t_version;;
     help|h|--help)  t_help;;
+    ".")
+        dot_action="${1:-}"; [[ -n "${1:-}" ]] && shift
+        case "$dot_action" in
+            ""|status|s)    t_dot_status;;
+            in|i)           t_dot_in "$@";;
+            out|o)          printf 'No clock-out in timedot mode — use: t . i account time\n' >&2; exit 1;;
+            log|l)          t_dot_log "$@";;
+            comment|c)      t_dot_comment "$@";;
+            accounts|a)     td_accounts;;
+            bal|b)          td_ledger bal "$@";;
+            reg|r)          td_ledger reg "$@";;
+            print|p)        td_ledger print "$@";;
+            stats)          td_ledger stats "$@";;
+            today|td)       td_ledger bal -p today "$@";;
+            yesterday|yd)   td_ledger bal -p yesterday "$@";;
+            yd^)            td_ledger bal -p "2 days ago" "$@";;
+            thisweek|tw)    td_ledger bal -p "this week" "$@";;
+            lastweek|lw)    td_ledger bal -p "last week" "$@";;
+            thismonth|tm)   td_ledger bal -p "this month" "$@";;
+            lastmonth|lm)   td_ledger bal -p "last month" "$@";;
+            cur)            td_last_account;;
+            edit|e)         "$EDITOR_BIN" "$td_file";;
+            file|f)         printf '%s\n' "$td_file";;
+            grep|g)         grep "$@" "$td_file";;
+            head)           if [[ $# -gt 0 ]]; then head "$@" "$td_file"; else head -20 "$td_file"; fi;;
+            tail|t)         if [[ $# -gt 0 ]]; then tail "$@" "$td_file"; else tail -20 "$td_file"; fi;;
+            less)           less "$td_file";;
+            ui|u)           command -v hledger-ui &>/dev/null && hledger-ui -f "$td_file" "$@" || { printf 'hledger-ui not found\n' >&2; exit 1; };;
+            web|w)          command -v hledger-web &>/dev/null && hledger-web -f "$td_file" "$@" || { printf 'hledger-web not found\n' >&2; exit 1; };;
+            zip|z)          t_dot_zip;;
+            version|v)      t_version;;
+            help|h|--help)  t_dot_help;;
+            *)              printf 'Unknown dot command: %s\n\n' "$dot_action" >&2; t_dot_help; exit 1;;
+        esac;;
     *)              printf 'Unknown: %s\n\n' "$action" >&2; t_help; exit 1;;
 esac
