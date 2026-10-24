@@ -13,7 +13,7 @@
 #    timelog.timedot_file = ~/.task/time/tw.timedot
 ###############################################################################
 
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 # --- Colours -----------------------------------------------------------------
 red='\e[0;91m'; green='\e[0;92m'; blue='\e[0;94m'; reset='\e[0m'
@@ -74,7 +74,7 @@ t_status() {
     if [[ "$status" == "i" ]]; then
         local in_line; in_line=$(grep '^i ' "$tc_file" | tail -1)
         local in_dt;   in_dt=$(awk '{print $2, $3}' <<< "$in_line")
-        local desc;    desc=$(cut -d' ' -f5- <<< "$in_line" | sed 's/[[:space:]]*;.*$//')
+        local desc;    desc=$(cut -d' ' -f5- <<< "$in_line" | sed 's/^[[:space:]]*//; s/[[:space:]]*;.*$//')
 
         local elapsed_str=""
         local start_epoch; start_epoch=$(date -d "$in_dt" +%s 2>/dev/null)
@@ -108,7 +108,7 @@ t_in() {
         local cur_account; cur_account=$(tc_last_i_field 4)
         if [[ "$account" == "$cur_account" || -z "$account" ]]; then
             local cur_desc; cur_desc=$(grep '^i ' "$tc_file" | tail -1 \
-                | cut -d' ' -f5- | sed 's/[[:space:]]*;.*$//')
+                | cut -d' ' -f5- | sed 's/^[[:space:]]*//; s/[[:space:]]*;.*$//')
             printf "${blue}Already clocked ${green}IN${reset} to ${blue}%s${reset}%s\n" \
                 "$cur_account" "${cur_desc:+  $cur_desc}"
             return 0
@@ -140,7 +140,7 @@ t_out() {
 
     local account; account=$(tc_last_i_field 4)
     local desc;    desc=$(grep '^i ' "$tc_file" | tail -1 \
-        | cut -d' ' -f5- | sed 's/[[:space:]]*;.*$//')
+        | cut -d' ' -f5- | sed 's/^[[:space:]]*//; s/[[:space:]]*;.*$//')
 
     local entry="o $(tc_now)"
     [[ -n "$comment" ]] && entry+="  ; $comment"
