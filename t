@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ###############################################################################
-#  t — timelog utility for hledger timeclock files              v1.3.0
+#  t — timelog utility for hledger timeclock files              v1.3.1
 #  see: github.com/linuxcaffe/t/
 #
 #  Config: ~/.task/config/timelog.rc
@@ -14,7 +14,7 @@
 #    timelog.dot-alias.dog = home:dog-walk 20m     →  t . dog
 ###############################################################################
 
-VERSION="1.3.0"
+VERSION="1.3.1"
 
 # --- Colours -----------------------------------------------------------------
 red='\e[0;91m'; green='\e[0;92m'; blue='\e[0;94m'; reset='\e[0m'
@@ -34,7 +34,7 @@ get_config() {
 _expand() { printf '%s' "${1/#\~/$HOME}"; }
 
 tc_file=$(_expand "$(get_config file "${HOME}/.task/time/tw.timeclock")")
-tz=$(get_config tz "$(date +%Z)")
+tz=$(get_config tz "")   # empty = system local time
 LEDGER=$(get_config ledger_bin hledger)
 EDITOR_BIN=$(get_config editor "${EDITOR:-vi}")
 
@@ -45,7 +45,10 @@ td_file=$(_expand "$(get_config timedot_file "$(dirname "$tc_file")/tw.timedot")
 
 # --- Helpers -----------------------------------------------------------------
 
-tc_now()    { TZ="$tz" date "+%Y/%m/%d %H:%M:%S"; }
+# Only set TZ when configured: "date +%Z" abbreviations (EDT) aren't valid TZ values
+tz_date()   { if [[ -n "$tz" ]]; then TZ="$tz" date "$@"; else date "$@"; fi; }
+
+tc_now()    { tz_date "+%Y/%m/%d %H:%M:%S"; }
 
 tc_status() {
     # Returns "i" if clocked in, "o" if out, "" if no entries
@@ -177,7 +180,7 @@ t_log() {
 
     _ensure_file
     local stopped; stopped=$(tc_now)
-    local started; started=$(TZ="$tz" date -d "-${minutes} minutes" "+%Y/%m/%d %H:%M:%S")
+    local started; started=$(tz_date -d "-${minutes} minutes" "+%Y/%m/%d %H:%M:%S")
 
     local entry="i $started $account"
     [[ -n "$desc" ]] && entry+="  $desc"
@@ -276,7 +279,7 @@ Usage: t [action] [args]                              "t" is for timelog
   Config: ~/.task/config/timelog.rc
     timelog.file         = ~/.task/time/tw.timeclock
     timelog.timedot_file = ~/.task/time/tw.timedot
-    timelog.tz           = America/Toronto
+    timelog.tz           = America/Toronto   (optional; default system local)
     timelog.ledger_bin   = hledger
     timelog.editor       = vi    (defaults to \$EDITOR)
 EOF
@@ -284,7 +287,7 @@ EOF
 
 # --- Timedot helpers ---------------------------------------------------------
 
-td_now()        { TZ="$tz" date "+%Y/%m/%d"; }
+td_now()        { tz_date "+%Y/%m/%d"; }
 td_ledger()     { "$LEDGER" -f "$td_file" "$@"; }
 
 _ensure_td_file() {
