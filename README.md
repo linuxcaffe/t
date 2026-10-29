@@ -63,6 +63,33 @@ Usage: t<space><action> or t<CR> for status        "t" is for "timelog"
       ( * = planned )          https://github.com/linuxcaffe/task-timelog-hook/
 ```
 
+## Timedot mode (t .) ##
+
+Prefix `.` to log to a separate [timedot][htd] file instead. There's no clock in
+or clock out: a dot entry *is* the whole interval, so you go straight to the
+account. It doesn't touch the timeclock either, so you can log a quick habit
+while a regular timed activity keeps running.
+
+    t . home:dog-walk 20m          # account + time
+    t . health:smoke .             # timedot dots, each . = 15min
+    t . walk 30m around the block  # anything after the time is a comment
+
+Define **dot-aliases** in `~/.task/config/timelog.rc` for things you log often:
+
+    timelog.dot-alias.dog   = home:dog-walk 20m
+    timelog.dot-alias.smoke = health:smoke .
+    timelog.dot-alias.read  = leisure:reading
+
+Then:
+
+    t . dog                  # home:dog-walk  20m
+    t . dog 40m with rex     # override the time, add a comment
+    t . read 1.5h            # aliases without a time need one given
+    t . aliases              # list them
+
+Dot subcommands (`b`, `today`, `tail`, …) take priority over alias and account
+names. `t . i account time` still works as the explicit form. See `t . help`.
+
 ## Web widget (t codeblock) ##
 
 `t` ships a live timer widget for markdown note apps that support custom code
@@ -136,5 +163,6 @@ Even though this works with [ledger][] 3, the [timelog][] format is only referen
 [ledger]: http://ledger-cli.org
 [timelog]: http://ledger-cli.org/2.6/ledger.html#Using-timeclock-to-record-billable-time
 [htl]: http://hledger.org/MANUAL.html#timelog-files
+[htd]: https://hledger.org/dev/hledger.html#timedot
 [hledger]: http://hledger.org/
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ###############################################################################
-#  t — timelog utility for hledger timeclock files              v1.1.0
+#  t — timelog utility for hledger timeclock files              v1.3.0
 #  see: github.com/linuxcaffe/t/
 #
 #  Config: ~/.task/config/timelog.rc
@@ -9,11 +9,12 @@
 #    timelog.ledger_bin = hledger
 #    timelog.editor     = vi
 ###############################################################################
-#  Prefix "." to use timedot format:  t . i account 1.5h
+#  Prefix "." to use timedot format:  t . account 1.5h
 #    timelog.timedot_file = ~/.task/time/tw.timedot
+#    timelog.dot-alias.dog = home:dog-walk 20m     →  t . dog
 ###############################################################################
 
-VERSION="1.2.1"
+VERSION="1.3.0"
 
 # --- Colours -----------------------------------------------------------------
 red='\e[0;91m'; green='\e[0;92m'; blue='\e[0;94m'; reset='\e[0m'
@@ -267,7 +268,8 @@ Usage: t [action] [args]                              "t" is for timelog
     h|help            this help
 
   Timedot mode:  prefix any command with "."
-    t . i account time [comment]   log time in timedot format
+    t . account time [comment]     log time in timedot format (no in/out)
+    t . <alias> [time] [comment]   log a dot-alias from timelog.rc
     t . b                          balance report on timedot file
     t . help                       timedot mode help
 
@@ -305,6 +307,27 @@ td_accounts() {
     grep -E '^[^;#*/[:space:]].*  +[0-9. ]' "$td_file" | sed 's/  .*//' | sort -u
 }
 
+td_alias() {
+    # Print the value of timelog.dot-alias.<name>, or fail if undefined
+    local name="$1"
+    [[ -f "$rc" && "$name" =~ ^[A-Za-z0-9_-]+$ ]] || return 1
+    local line
+    line=$(grep -m1 "^timelog\.dot-alias\.${name}[[:space:]]*=" "$rc" 2>/dev/null) || return 1
+    printf '%s' "$(cut -d= -f2- <<< "$line" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+}
+
+td_aliases() {
+    [[ -f "$rc" ]] || return
+    grep '^timelog\.dot-alias\.' "$rc" \
+        | sed 's/^timelog\.dot-alias\.//; s/[[:space:]]*=[[:space:]]*/\t/' \
+        | awk -F'\t' '{ printf "%-12s %s\n", $1, $2 }'
+}
+
+td_is_time() {
+    # Timedot quantities: dots (. = 15min), or a number with optional unit
+    [[ "$1" =~ ^[.\ \']+$ || "$1" =~ ^[0-9]*\.?[0-9]+(s|m|h|d|w|mo|y)?$ ]]
+}
+
 # --- Timedot commands --------------------------------------------------------
 
 t_dot_status() {
@@ -322,8 +345,23 @@ t_dot_status() {
 }
 
 t_dot_in() {
+    # Expand a dot-alias: "account [time] [comment]"; CLI time/comment override
+    local alias_val
+    if [[ -n "${1:-}" ]] && alias_val=$(td_alias "$1"); then
+        shift
+        local a_acct a_time a_comment
+        read -r a_acct a_time a_comment <<< "$alias_val"
+        if ! td_is_time "${a_time:-}"; then
+            a_comment="${a_time:+$a_time${a_comment:+ $a_comment}}"; a_time=""
+        fi
+        local time="$a_time"
+        if [[ -n "${1:-}" ]] && td_is_time "$1"; then time="$1"; shift; fi
+        local comment="${*:-$a_comment}"
+        set -- "$a_acct" "$time" "$comment"
+    fi
+
     local account="${1:-}" time="${2:-}"; shift 2 2>/dev/null || true
-    local comment="${*:-}"
+    local comment="${*:-}"; comment="${comment#;}"; comment="${comment# }"
 
     [[ -z "$account" ]] && { printf 'Specify an account\n' >&2; return 1; }
     [[ -z "$time" ]]    && { printf 'Specify a time (e.g. 1.5h  ....  90m)\n' >&2; return 1; }
@@ -333,7 +371,7 @@ t_dot_in() {
     local last_date; last_date=$(td_last_date)
 
     local entry="${account}  ${time}"
-    [[ -n "$comment" ]] && entry+="    ; ${comment#; }"
+    [[ -n "$comment" ]] && entry+="    ; ${comment}"
 
     if [[ "$last_date" == "$today" ]]; then
         printf '%s\n' "$entry" >> "$td_file"
@@ -383,7 +421,9 @@ t_dot_help() {
 Usage: t . [action] [args]                      "t ." is for timedot
 
   Entry:
-    i|in  account time [comment]    log time  (e.g. t . i work:client 2.5h)
+    account time [comment]          log time  (e.g. t . work:client 2.5h)
+    <alias> [time] [comment]        log a dot-alias (time/comment override it)
+    i|in  account time [comment]    same as above, explicit form
     l|log <min> [acct] [desc]       log <minutes> of work (converts to decimal h)
     c|comment [text]                add timestamped comment
 
@@ -391,6 +431,7 @@ Usage: t . [action] [args]                      "t ." is for timedot
     (no args)|s|status              show last entry + file path
     a|accounts                      list accounts used
     cur                             last-used account (for scripts/prompts)
+    aliases                         list dot-aliases from timelog.rc
 
   Reports (extra args passed to hledger):
     b|bal   [args]    balance report
@@ -421,7 +462,10 @@ Usage: t . [action] [args]                      "t ." is for timedot
   Account/time separator: 2+ spaces  →  account  1.5h
 
   Config: ~/.task/config/timelog.rc
-    timelog.timedot_file = ~/.task/time/tw.timedot
+    timelog.timedot_file  = ~/.task/time/tw.timedot
+    timelog.dot-alias.dog = home:dog-walk 20m     →  t . dog
+                                                  →  t . dog 40m  with rex
+  Subcommand names above take priority over aliases and account names.
 EOF
 }
 
@@ -470,7 +514,7 @@ case "$action" in
         case "$dot_action" in
             ""|status|s)    t_dot_status;;
             in|i)           t_dot_in "$@";;
-            out|o)          printf 'No clock-out in timedot mode — use: t . i account time\n' >&2; exit 1;;
+            out|o)          printf 'No clock-out in timedot mode — use: t . account time\n' >&2; exit 1;;
             log|l)          t_dot_log "$@";;
             comment|c)      t_dot_comment "$@";;
             accounts|a)     td_accounts;;
@@ -486,6 +530,7 @@ case "$action" in
             thismonth|tm)   td_ledger bal -p "this month" "$@";;
             lastmonth|lm)   td_ledger bal -p "last month" "$@";;
             cur)            td_last_account;;
+            aliases)        td_aliases;;
             edit|e)         "$EDITOR_BIN" "$td_file";;
             file|f)         printf '%s\n' "$td_file";;
             grep|g)         grep "$@" "$td_file";;
@@ -497,7 +542,15 @@ case "$action" in
             zip|z)          t_dot_zip;;
             version|v)      t_version;;
             help|h|--help)  t_dot_help;;
-            *)              printf 'Unknown dot command: %s\n\n' "$dot_action" >&2; t_dot_help; exit 1;;
+            *)
+                # Bare form: t . <alias|account> [time] [comment]
+                if td_alias "$dot_action" >/dev/null || td_is_time "${1:-}"; then
+                    t_dot_in "$dot_action" "$@"
+                else
+                    printf 'Unknown dot command or alias: %s\n' "$dot_action" >&2
+                    printf 'To log time:  t . account time [comment]   (e.g. t . %s 30m)\n' "$dot_action" >&2
+                    exit 1
+                fi;;
         esac;;
     *)              printf 'Unknown: %s\n\n' "$action" >&2; t_help; exit 1;;
 esac
