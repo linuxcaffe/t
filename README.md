@@ -90,6 +90,27 @@ Then:
 Dot subcommands (`b`, `today`, `tail`, …) take priority over alias and account
 names. `t . i account time` still works as the explicit form. See `t . help`.
 
+## Several devices ##
+
+When `~/.task` is shared between devices (say with gittw), `timelog.rc` is shared
+too. A `timelog.*` line in `~/.task/local.rc`, which each device keeps to itself,
+wins over it, so each device can write its own files:
+
+    # ~/.task/local.rc on a phone
+    timelog.file         = ~/.nb/mobile/s5.timeclock
+    timelog.timedot_file = ~/.nb/mobile/s5.timedot
+
+To see everything in one place, list the other devices' files for reports. `t`
+only reads them (`bal`, `reg`, `print`, `today`, `t . b` …), never writes them,
+and skips any that aren't there yet:
+
+    # ~/.task/local.rc on the desktop
+    timelog.include         = ~/.nb/mobile/s5.timeclock
+    timelog.timedot_include = ~/.nb/mobile/s5.timedot
+
+One file per device means two devices never write the same file: clock in and
+out on the same device. `t version` lists the files a report reads.
+
 ## Web widget (t codeblock) ##
 
 `t` ships a live timer widget for markdown note apps that support custom code

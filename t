@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ###############################################################################
-#  t — timelog utility for hledger timeclock files              v1.3.1
+#  t — timelog utility for hledger timeclock files              v1.4.0
 #  see: github.com/linuxcaffe/t/
 #
 #  Config: ~/.task/config/timelog.rc
@@ -13,22 +13,32 @@
 #    timelog.timedot_file = ~/.task/time/tw.timedot
 #    timelog.dot-alias.dog = home:dog-walk 20m     →  t . dog
 ###############################################################################
+#  Per station: a timelog.* line in ~/.task/local.rc (untracked) wins over timelog.rc,
+#  so each device can write its own files.
+#  Reports only (never written): more files to read, space-separated, ~ allowed;
+#  missing ones are skipped (say a phone's file before its first sync):
+#    timelog.include         = ~/.nb/mobile/s5.timeclock
+#    timelog.timedot_include = ~/.nb/mobile/s5.timedot
+###############################################################################
 
-VERSION="1.3.1"
+VERSION="1.4.0"
 
 # --- Colours -----------------------------------------------------------------
 red='\e[0;91m'; green='\e[0;92m'; blue='\e[0;94m'; reset='\e[0m'
 
 # --- Config ------------------------------------------------------------------
 rc="${HOME}/.task/config/timelog.rc"
+local_rc="${HOME}/.task/local.rc"   # this station's own settings (untracked)
 
 get_config() {
-    local key="$1" default="${2:-}"
-    [[ -f "$rc" ]] || { printf '%s' "$default"; return; }
-    local val
-    val=$(grep -m1 "^timelog\.${key}[[:space:]]*=" "$rc" 2>/dev/null \
-          | cut -d= -f2- | sed 's/^[[:space:]]*//')
-    printf '%s' "${val:-$default}"
+    local key="$1" default="${2:-}" f val
+    for f in "$local_rc" "$rc"; do
+        [[ -f "$f" ]] || continue
+        val=$(grep -m1 "^timelog\.${key}[[:space:]]*=" "$f" 2>/dev/null \
+              | cut -d= -f2- | sed 's/^[[:space:]]*//')
+        [[ -n "$val" ]] && { printf '%s' "$val"; return; }
+    done
+    printf '%s' "$default"
 }
 
 _expand() { printf '%s' "${1/#\~/$HOME}"; }
@@ -42,6 +52,17 @@ EDITOR_BIN=$(get_config editor "${EDITOR:-vi}")
 [[ -n "${TIMELOG:-}" ]] && tc_file="$TIMELOG"
 
 td_file=$(_expand "$(get_config timedot_file "$(dirname "$tc_file")/tw.timedot")")
+
+# -f options for the report-only files that exist: _includes <key>
+_includes() {
+    local f
+    for f in $(get_config "$1" ""); do
+        f=$(_expand "$f")
+        [[ -f "$f" ]] && printf '%s\n' -f "$f"
+    done
+}
+mapfile -t tc_extra < <(_includes include)
+mapfile -t td_extra < <(_includes timedot_include)
 
 # --- Helpers -----------------------------------------------------------------
 
@@ -62,7 +83,7 @@ tc_last_i_field() {
     grep '^i ' "$tc_file" 2>/dev/null | tail -1 | awk -v n="$n" '{print $n}'
 }
 
-tc_ledger() { "$LEDGER" -f "$tc_file" "$@"; }
+tc_ledger() { "$LEDGER" -f "$tc_file" "${tc_extra[@]}" "$@"; }
 
 _ensure_file() {
     mkdir -p "$(dirname "$tc_file")"
@@ -224,6 +245,9 @@ t_version() {
     local lv; lv=$("$LEDGER" --version 2>/dev/null | head -1 || printf '%s (not found)' "$LEDGER")
     printf "t %s\nconfig:  %s\ntimelog: %s\ntimedot: %s\nledger:  %s\n" \
         "$VERSION" "$rc" "$tc_file" "$td_file" "$lv"
+    local i
+    for ((i = 1; i < ${#tc_extra[@]}; i += 2)); do printf "include: %s\n" "${tc_extra[i]}"; done
+    for ((i = 1; i < ${#td_extra[@]}; i += 2)); do printf "include: %s (timedot)\n" "${td_extra[i]}"; done
 }
 
 t_help() {
@@ -288,7 +312,7 @@ EOF
 # --- Timedot helpers ---------------------------------------------------------
 
 td_now()        { tz_date "+%Y/%m/%d"; }
-td_ledger()     { "$LEDGER" -f "$td_file" "$@"; }
+td_ledger()     { "$LEDGER" -f "$td_file" "${td_extra[@]}" "$@"; }
 
 _ensure_td_file() {
     mkdir -p "$(dirname "$td_file")"
